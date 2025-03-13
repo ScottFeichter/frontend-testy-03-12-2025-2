@@ -1,0 +1,47 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+        # Branch-specific environment variables
+        - |
+          if [ "${AWS_BRANCH}" = "Production" ]; then
+            echo "REACT_APP_STAGE=production" >> .env
+            echo "REACT_APP_API_URL=$PROD_API_URL" >> .env
+          elif [ "${AWS_BRANCH}" = "Staging" ]; then
+            echo "REACT_APP_STAGE=staging" >> .env
+            echo "REACT_APP_API_URL=$STAGING_API_URL" >> .env
+          else
+            echo "REACT_APP_STAGE=development" >> .env
+            echo "REACT_APP_API_URL=$DEV_API_URL" >> .env
+          fi
+
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: build
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .npm/**/*
+  customHeaders:
+    - pattern: '**/*'
+      headers:
+        - key: 'Strict-Transport-Security'
+          value: 'max-age=31536000; includeSubDomains'
+        - key: 'X-Frame-Options'
+          value: 'SAMEORIGIN'
+        - key: 'X-XSS-Protection'
+          value: '1; mode=block'
+        - key: 'X-Content-Type-Options'
+          value: 'nosniff'
+        - key: 'Content-Security-Policy'
+          value: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+  customRules:
+    - source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>'
+      target: '/index.html'
+      status: '200'
